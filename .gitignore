@@ -1,0 +1,6 @@
+data/
+volumes/
+*.log
+etc/
+*.drawio
+gos3backup
