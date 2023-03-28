@@ -1,0 +1,12 @@
+[Unit]
+Description=GoS3Backup Service
+After=network.target
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+Restart=always
+ExecStart=/usr/bin/gos3backup
+
+[Install]
+WantedBy=multi-user.target

@@ -1,5 +1,7 @@
 source:
   enabled: true
+  rlcp: true
+  name_template: "{{ .ProjectName }}-{{ .Version }}"
 
 before:
   hooks:
@@ -7,12 +9,39 @@ before:
     - go generate ./...
 
 builds:
-  - env:
+  - binary: "{{ tolower .ProjectName }}"
+    env:
       - CGO_ENABLED=0
     goos:
       - linux
+      - darwin
     ldflags:
       - -s -w -X github.com/hibare/GoS3Backup/cmd.version={{.Version}}
+
+universal_binaries:
+  - replace: true
+    name_template: "{{ tolower .ProjectName }}"
+
+nfpms:
+  - id: nfpms
+    package_name: "gos3backup"
+    file_name_template: "{{ .ConventionalFileName }}"
+    vendor: Hibare.
+    homepage: https://github.com/hibare/GoS3Backup
+    maintainer: Hibare <admin@hibare.in>.
+    description: |-
+      Software to perform daily backups to S3.
+    formats:
+      - apk
+      - deb
+      - rpm
+    bindir: /usr/bin
+    contents:
+      - src: scripts/gos3backup.service
+        dst: /etc/systemd/system/gos3backup.service
+    scripts:
+      postinstall: "scripts/postinstall.sh"
+      preremove: "scripts/preremove.sh"
 
 checksum:
   name_template: "checksums.txt"
