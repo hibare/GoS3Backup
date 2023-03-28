@@ -32,7 +32,6 @@ nfpms:
     description: |-
       Software to perform daily backups to S3.
     formats:
-      - apk
       - deb
       - rpm
     bindir: /usr/bin
@@ -55,3 +54,10 @@ changelog:
     exclude:
       - "^docs:"
       - "^test:"
+
+publishers:
+  - name: fury.io
+    ids:
+      - nfpms
+    dir: "{{ dir .ArtifactPath }}"
+    cmd: curl -F package=@{{ .ArtifactName }} https://{{ .Env.FURY_TOKEN }}@push.fury.io/hibare/
