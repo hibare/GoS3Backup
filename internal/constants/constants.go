@@ -1,7 +1,7 @@
 package constants
 
 const (
-	ConfigRootLinux       = "/home/ranger/Documents/projects/GoS3Backup/etc/"
+	ConfigRootLinux       = "/etc/"
 	ConfigRootWindows     = "C:\\ProgramData\\"
 	ConfigRootDarwin      = "/Library/Application Support/"
 	ConfigFilename        = "config"

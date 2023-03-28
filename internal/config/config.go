@@ -50,8 +50,8 @@ type Config struct {
 var Current *Config
 
 func LoadConfig() {
-	configRootDir := getConfigRootDir()
-	configFilePath := getConfigFilePath(configRootDir)
+	configRootDir := GetConfigRootDir()
+	configFilePath := GetConfigFilePath(configRootDir)
 	preCheckConfigPath(configRootDir)
 
 	file, err := os.Open(configFilePath)
@@ -91,7 +91,21 @@ func LoadConfig() {
 	Current.Backup.Hostname = utils.GetHostname()
 }
 
-func getConfigRootDir() string {
+func CleanConfig() {
+	configRootDir := GetConfigRootDir()
+	if info, err := os.Stat(configRootDir); err != nil && os.IsExist(err) {
+		log.Fatalf("Error %s", err)
+	} else if !info.IsDir() {
+		log.Fatalf("Config directory is not a directory: %s", configRootDir)
+		return
+	} else {
+		if err := os.RemoveAll(configRootDir); err != nil {
+			log.Fatalf("Error removing config directory: %v", err)
+		}
+	}
+}
+
+func GetConfigRootDir() string {
 	var configRootDir string
 
 	switch os := runtime.GOOS; os {
@@ -108,13 +122,13 @@ func getConfigRootDir() string {
 	return filepath.Join(configRootDir, strings.ToLower(constants.ProgramIdentifier))
 }
 
-func getConfigFilePath(configRootDir string) string {
+func GetConfigFilePath(configRootDir string) string {
 	return filepath.Join(configRootDir, fmt.Sprintf("%s.%s", constants.ConfigFilename, constants.ConfigFileExtension))
 }
 
 func preCheckConfigPath(configRootDir string) {
 
-	configPath := getConfigFilePath(configRootDir)
+	configPath := GetConfigFilePath(configRootDir)
 
 	if info, err := os.Stat(configRootDir); os.IsNotExist(err) {
 		log.Warnf("Config directory does not exist, creating: %s", configRootDir)
