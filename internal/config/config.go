@@ -91,6 +91,20 @@ func LoadConfig() {
 	Current.Backup.Hostname = utils.GetHostname()
 }
 
+func CleanConfig() {
+	configRootDir := getConfigRootDir()
+	if info, err := os.Stat(configRootDir); err != nil && os.IsExist(err) {
+		log.Fatalf("Error %s", err)
+	} else if !info.IsDir() {
+		log.Fatalf("Config directory is not a directory: %s", configRootDir)
+		return
+	} else {
+		if err := os.RemoveAll(configRootDir); err != nil {
+			log.Fatalf("Error removing config directory: %v", err)
+		}
+	}
+}
+
 func getConfigRootDir() string {
 	var configRootDir string
 

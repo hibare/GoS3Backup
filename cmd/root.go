@@ -6,6 +6,7 @@ import (
 
 	"github.com/go-co-op/gocron"
 	"github.com/hibare/GoS3Backup/cmd/backup"
+	"github.com/hibare/GoS3Backup/cmd/clean"
 	initialize "github.com/hibare/GoS3Backup/cmd/init"
 	backup_int "github.com/hibare/GoS3Backup/internal/backup"
 	"github.com/hibare/GoS3Backup/internal/config"
@@ -43,6 +44,7 @@ func Execute() {
 
 func init() {
 	rootCmd.AddCommand(initialize.InitCmd)
+	rootCmd.AddCommand(clean.CleanCmd)
 	rootCmd.AddCommand(backup.BackupCmd)
 
 	cobra.OnInitialize(logging.SetupLogger, config.LoadConfig)
