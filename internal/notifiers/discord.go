@@ -8,6 +8,7 @@ import (
 	"strconv"
 
 	"github.com/hibare/GoS3Backup/internal/config"
+	"github.com/hibare/GoS3Backup/internal/version"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -22,6 +23,7 @@ type DiscordEmbed struct {
 	Title       string              `json:"title"`
 	Description string              `json:"description"`
 	Color       int                 `json:"color"`
+	Footer      DiscordEmbedFooter  `json:"footer"`
 	Fields      []DiscordEmbedField `json:"fields"`
 }
 
@@ -31,8 +33,22 @@ type DiscordEmbedField struct {
 	Inline bool   `json:"inline,omitempty"`
 }
 
+type DiscordEmbedFooter struct {
+	Text string `json:"text"`
+}
+
 type DiscordComponent struct {
 	// Define struct for Discord components if needed
+}
+
+func (d *DiscordWebhookMessage) AddFooter() {
+	isUpdate, LatestVersion := version.IsNewVersionAvailable()
+	if isUpdate {
+		footer := DiscordEmbedFooter{
+			Text: fmt.Sprintf(version.UpdateNotificationMessage, LatestVersion),
+		}
+		d.Embeds[0].Footer = footer
+	}
 }
 
 func DiscordBackupSuccessfulNotification(webhookUrl string, hostname, directory string, dirs, files int, key string) error {
@@ -65,6 +81,7 @@ func DiscordBackupSuccessfulNotification(webhookUrl string, hostname, directory 
 		Username:   "Backup Job",
 		Content:    fmt.Sprintf("**Backup Successful** - *%s*", hostname),
 	}
+	webhookMessage.AddFooter()
 
 	return SendMessage(webhookUrl, webhookMessage)
 
@@ -100,6 +117,7 @@ func DiscordBackupFailedNotification(webhookUrl string, hostname, err, directory
 		Username:   "Backup Job",
 		Content:    fmt.Sprintf("**Backup Failed** - *%s*", hostname),
 	}
+	webhookMessage.AddFooter()
 
 	return SendMessage(webhookUrl, webhookMessage)
 }
@@ -124,6 +142,7 @@ func DiscordBackupDeletionFailureNotification(webhookUrl string, hostname, err, 
 		Username:   "Backup Job",
 		Content:    fmt.Sprintf("**Backup Deletion Failed** - *%s*", hostname),
 	}
+	webhookMessage.AddFooter()
 
 	return SendMessage(webhookUrl, webhookMessage)
 }
