@@ -2,7 +2,6 @@ package config
 
 import (
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -11,6 +10,7 @@ import (
 	"github.com/hibare/GoS3Backup/internal/constants"
 	"github.com/hibare/GoS3Backup/internal/utils"
 	log "github.com/sirupsen/logrus"
+	"github.com/spf13/viper"
 	"gopkg.in/yaml.v3"
 )
 
@@ -51,22 +51,13 @@ var Current *Config
 
 func LoadConfig() {
 	configRootDir := GetConfigRootDir()
-	configFilePath := GetConfigFilePath(configRootDir)
 	preCheckConfigPath(configRootDir)
 
-	file, err := os.Open(configFilePath)
-	if err != nil {
-		log.Fatalf("Error reading YAML file: %v", err)
-	}
-	defer file.Close()
+	viper.SetConfigName(constants.ConfigFilename)
+	viper.AddConfigPath(configRootDir)
+	viper.SetConfigType(constants.ConfigFileExtension)
 
-	data, err := io.ReadAll(file)
-	if err != nil {
-		log.Fatalf("Error reading YAML data: %v", err)
-	}
-
-	// Unmarshal YAML data into struct
-	if err := yaml.Unmarshal(data, &Current); err != nil {
+	if err := viper.Unmarshal(&Current); err != nil {
 		log.Fatalf("Error parsing YAML data: %v", err)
 	}
 
