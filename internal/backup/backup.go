@@ -34,7 +34,7 @@ func Backup() {
 
 		notifiers.BackupSuccessfulNotification(dir, dirs, files, prefix)
 	}
-
+	log.Info("Backup job ran successfully")
 }
 
 func ListBackups() []string {

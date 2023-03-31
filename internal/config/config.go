@@ -15,36 +15,36 @@ import (
 )
 
 type S3Config struct {
-	Endpoint  string `yaml:"endpoint"`
-	Region    string `yaml:"region"`
-	AccessKey string `yaml:"access-key"`
-	SecretKey string `yaml:"secret-key"`
-	Bucket    string `yaml:"bucket"`
-	Prefix    string `yaml:"prefix"`
+	Endpoint  string `yaml:"endpoint" mapstructure:"endpoint"`
+	Region    string `yaml:"region" mapstructure:"region"`
+	AccessKey string `yaml:"access-key" mapstructure:"access-key"`
+	SecretKey string `yaml:"secret-key" mapstructure:"secret-key"`
+	Bucket    string `yaml:"bucket" mapstructure:"bucket"`
+	Prefix    string `yaml:"prefix" mapstructure:"prefix"`
 }
 
 type BackupConfig struct {
-	Dirs           []string `yaml:"dirs"`
-	Hostname       string
-	RetentionCount int    `yaml:"retention-count"`
-	DateTimeLayout string `yaml:"date-time-layout"`
-	Cron           string `yaml:"cron"`
+	Dirs           []string `yaml:"dirs" mapstructure:"dirs"`
+	Hostname       string   `yaml:"-"`
+	RetentionCount int      `yaml:"retention-count" mapstructure:"retention-count"`
+	DateTimeLayout string   `yaml:"date-time-layout" mapstructure:"date-time-layout"`
+	Cron           string   `yaml:"cron" mapstructure:"cron"`
 }
 
 type DiscordNotifierConfig struct {
-	Enabled bool   `yaml:"enabled"`
-	Webhook string `yaml:"webhook"`
+	Enabled bool   `yaml:"enabled" mapstructure:"enabled"`
+	Webhook string `yaml:"webhook" mapstructure:"webhook"`
 }
 
 type NotifiersConfig struct {
-	Enabled bool                  `yaml:"enabled"`
-	Discord DiscordNotifierConfig `yaml:"discord"`
+	Enabled bool                  `yaml:"enabled" mapstructure:"enabled"`
+	Discord DiscordNotifierConfig `yaml:"discord" mapstructure:"discord"`
 }
 
 type Config struct {
-	S3        S3Config        `yaml:"s3"`
-	Backup    BackupConfig    `yaml:"backup"`
-	Notifiers NotifiersConfig `yaml:"notifiers"`
+	S3        S3Config        `yaml:"s3" mapstructure:"s3"`
+	Backup    BackupConfig    `yaml:"backup" mapstructure:"backup"`
+	Notifiers NotifiersConfig `yaml:"notifiers" mapstructure:"notifiers"`
 }
 
 var Current *Config
@@ -57,6 +57,13 @@ func LoadConfig() {
 	viper.AddConfigPath(configRootDir)
 	viper.SetConfigType(constants.ConfigFileExtension)
 
+	// Load the configuration file
+	err := viper.ReadInConfig()
+	if err != nil {
+		log.Fatalf("Error reading config file: %v", err)
+	}
+
+	// Unmarshal the configuration file into a struct
 	if err := viper.Unmarshal(&Current); err != nil {
 		log.Fatalf("Error parsing YAML data: %v", err)
 	}
