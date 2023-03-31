@@ -5,7 +5,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-func BackupSuccessfulNotification(directory string, dirs, files int, key string) {
+func BackupSuccessfulNotification(directory string, totalDirs, totalFiles, successFiles int, key string) {
 
 	if !config.Current.Notifiers.Enabled {
 		log.Warn("Notifiers are disabled")
@@ -16,14 +16,14 @@ func BackupSuccessfulNotification(directory string, dirs, files int, key string)
 		log.Warning("Discord notifier not enabled")
 		return
 	} else if config.Current.Notifiers.Discord.Enabled {
-		if err := DiscordBackupSuccessfulNotification(config.Current.Notifiers.Discord.Webhook, config.Current.Backup.Hostname, directory, dirs, files, key); err != nil {
+		if err := DiscordBackupSuccessfulNotification(config.Current.Notifiers.Discord.Webhook, config.Current.Backup.Hostname, directory, totalDirs, totalFiles, successFiles, key); err != nil {
 			log.Errorf("Error sending Discord notification: %v", err)
 		}
 	}
 
 }
 
-func BackupFailedNotification(err, directory string, dirs, files int) {
+func BackupFailedNotification(err, directory string, totalDirs, totalFiles int) {
 
 	if !config.Current.Notifiers.Enabled {
 		log.Warn("Notifiers are disabled")
@@ -34,7 +34,7 @@ func BackupFailedNotification(err, directory string, dirs, files int) {
 		log.Warning("Discord notifier not enabled")
 		return
 	} else if config.Current.Notifiers.Discord.Enabled {
-		if err := DiscordBackupFailedNotification(config.Current.Notifiers.Discord.Webhook, config.Current.Backup.Hostname, err, directory, dirs, files); err != nil {
+		if err := DiscordBackupFailedNotification(config.Current.Notifiers.Discord.Webhook, config.Current.Backup.Hostname, err, directory, totalDirs, totalFiles); err != nil {
 			log.Errorf("Error sending Discord notification: %v", err)
 		}
 	}

@@ -21,18 +21,15 @@ func Backup() {
 	for _, dir := range config.Current.Backup.Dirs {
 		log.Infof("Processing path %s", dir)
 
-		// Estimate number of files & dirs in backup directory
-		files, dirs := utils.EstimateFilesAndDirs(config.Current.Backup.Dirs[0])
+		totalFiles, totalDirs, successFiles := s3.Upload(sess, config.Current.S3.Bucket, prefix, dir)
 
-		log.Infof("Estimated files: %d, dirs: %d", files, dirs)
-
-		if err := s3.Upload(sess, config.Current.S3.Bucket, prefix, dir); err != nil {
-			log.Errorf("Error uploading files: %v", err)
-			notifiers.BackupFailedNotification(err.Error(), dir, dirs, files)
+		if successFiles <= 0 {
+			log.Warnf("Uploaded files %d/%d", successFiles, totalFiles)
+			notifiers.BackupFailedNotification("", dir, totalDirs, totalFiles)
 			continue
 		}
 
-		notifiers.BackupSuccessfulNotification(dir, dirs, files, prefix)
+		notifiers.BackupSuccessfulNotification(dir, totalDirs, totalFiles, successFiles, prefix)
 	}
 	log.Info("Backup job ran successfully")
 }

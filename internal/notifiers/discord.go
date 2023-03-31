@@ -51,7 +51,7 @@ func (d *DiscordWebhookMessage) AddFooter() {
 	}
 }
 
-func DiscordBackupSuccessfulNotification(webhookUrl string, hostname, directory string, dirs, files int, key string) error {
+func DiscordBackupSuccessfulNotification(webhookUrl string, hostname, directory string, totalDirs, totalFiles, successFiles int, key string) error {
 	webhookMessage := DiscordWebhookMessage{
 		Embeds: []DiscordEmbed{
 			{
@@ -66,12 +66,12 @@ func DiscordBackupSuccessfulNotification(webhookUrl string, hostname, directory 
 					},
 					{
 						Name:   "Dirs",
-						Value:  strconv.Itoa(dirs),
+						Value:  strconv.Itoa(totalDirs),
 						Inline: true,
 					},
 					{
 						Name:   "Files",
-						Value:  strconv.Itoa(files),
+						Value:  fmt.Sprintf("%d/%d", successFiles, totalFiles),
 						Inline: true,
 					},
 				},
@@ -87,7 +87,7 @@ func DiscordBackupSuccessfulNotification(webhookUrl string, hostname, directory 
 
 }
 
-func DiscordBackupFailedNotification(webhookUrl string, hostname, err, directory string, dirs, files int) error {
+func DiscordBackupFailedNotification(webhookUrl string, hostname, err, directory string, totalDirs, totalFiles int) error {
 	webhookMessage := DiscordWebhookMessage{
 		Embeds: []DiscordEmbed{
 			{
@@ -102,12 +102,12 @@ func DiscordBackupFailedNotification(webhookUrl string, hostname, err, directory
 					},
 					{
 						Name:   "Dirs",
-						Value:  strconv.Itoa(dirs),
+						Value:  strconv.Itoa(totalDirs),
 						Inline: true,
 					},
 					{
 						Name:   "Files",
-						Value:  strconv.Itoa(files),
+						Value:  strconv.Itoa(totalFiles),
 						Inline: true,
 					},
 				},
