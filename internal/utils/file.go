@@ -7,31 +7,32 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-func EstimateFilesAndDirs(path string) (int, int) {
-	var files, dirs int
+func ListFilesDirs(path string) ([]string, []string) {
+	var (
+		files []string
+		Dirs  []string
+	)
 
 	filesInfo, err := os.ReadDir(path)
 	if err != nil {
 		log.Errorf("Error reading directory: %v", err)
-		return 0, 0
+		return files, Dirs
 	}
 
-	// Recursively traverse directory to count files & dirs.
+	// Recursively traverse directory to list files & dirs.
 	for _, file := range filesInfo {
 		if file.IsDir() {
-			dirs++
 			subdirPath := filepath.Join(path, file.Name())
-			log.Infof("Found directory: %s", subdirPath)
-			subFiles, subDirs := EstimateFilesAndDirs(subdirPath)
-			if err != nil {
-				return subFiles, subDirs
+			subFiles, subDirs := ListFilesDirs(subdirPath)
+			files = append(files, subFiles...)
+			Dirs = append(Dirs, subdirPath)
+			for _, dir := range subDirs {
+				Dirs = append(Dirs, filepath.Join(path, dir))
 			}
-			files += subFiles
-			dirs += subDirs
 		} else {
-			files++
+			files = append(files, filepath.Join(path, file.Name()))
 		}
 	}
 
-	return files, dirs
+	return files, Dirs
 }

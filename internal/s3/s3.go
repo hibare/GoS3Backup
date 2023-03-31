@@ -1,7 +1,6 @@
 package s3
 
 import (
-	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -11,6 +10,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/hibare/GoS3Backup/internal/config"
+	"github.com/hibare/GoS3Backup/internal/utils"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -28,44 +28,40 @@ func NewSession(s3Config config.S3Config) *session.Session {
 	return sess
 }
 
-func Upload(sess *session.Session, bucket, prefix, baseDir string) error {
+func Upload(sess *session.Session, bucket, prefix, baseDir string) (int, int, int) {
+	totalFiles, totalDirs, successFiles := 0, 0, 0
+
 	client := s3.New(sess)
 	baseDirParentPath := filepath.Dir(baseDir)
 
-	// Recursively upload files preserving paths w.r.t prefix
-	// We are not returning error, and continue to with next directory incase of failure
-	filepath.WalkDir(baseDir, func(path string, info fs.DirEntry, err error) error {
-		if err != nil {
-			log.Errorf("Error walking path %s: %v", path, err)
-			return nil
-		}
+	files, dirs := utils.ListFilesDirs(baseDir)
 
-		if info.IsDir() {
-			return nil
-		}
+	totalFiles = len(files)
+	totalDirs = len(dirs)
 
-		file, err := os.Open(path)
+	for _, file := range files {
+		file, err := os.Open(file)
 		if err != nil {
-			log.Errorf("Error opening file %s: %v", path, err)
-			return nil
+			log.Errorf("Error opening file %s: %v", file.Name(), err)
+			continue
 		}
 		defer file.Close()
 
-		key := filepath.Join(prefix, strings.TrimPrefix(path, baseDirParentPath))
+		key := filepath.Join(prefix, strings.TrimPrefix(file.Name(), baseDirParentPath))
 		_, err = client.PutObject(&s3.PutObjectInput{
 			Bucket: aws.String(bucket),
 			Key:    aws.String(key),
 			Body:   file,
 		})
 		if err != nil {
-			log.Errorf("Error uploading file %s: %v", path, err)
-			return nil
+			log.Errorf("Error uploading file %s: %v", file.Name(), err)
+			continue
 		}
-		log.Infof("Uploaded %s to S3://%s/%s", path, bucket, key)
-		return nil
-	})
+		successFiles += 1
+		log.Infof("Uploaded %s to S3://%s/%s", file.Name(), bucket, key)
+	}
 
-	return nil
+	return totalFiles, totalDirs, successFiles
 }
 
 func ListObjectsAtPrefixRoot(sess *session.Session, bucket, prefix string) ([]string, error) {
