@@ -40,25 +40,25 @@ func Upload(sess *session.Session, bucket, prefix, baseDir string) (int, int, in
 	totalDirs = len(dirs)
 
 	for _, file := range files {
-		file, err := os.Open(file)
+		fp, err := os.Open(file)
 		if err != nil {
-			log.Errorf("Error opening file %s: %v", file.Name(), err)
+			log.Errorf("Error opening file %s: %v", file, err)
 			continue
 		}
-		defer file.Close()
+		defer fp.Close()
 
-		key := filepath.Join(prefix, strings.TrimPrefix(file.Name(), baseDirParentPath))
+		key := filepath.Join(prefix, strings.TrimPrefix(file, baseDirParentPath))
 		_, err = client.PutObject(&s3.PutObjectInput{
 			Bucket: aws.String(bucket),
 			Key:    aws.String(key),
-			Body:   file,
+			Body:   fp,
 		})
 		if err != nil {
-			log.Errorf("Error uploading file %s: %v", file.Name(), err)
+			log.Errorf("Error uploading file %s: %v", file, err)
 			continue
 		}
 		successFiles += 1
-		log.Infof("Uploaded %s to S3://%s/%s", file.Name(), bucket, key)
+		log.Infof("Uploaded %s to S3://%s/%s", file, bucket, key)
 	}
 
 	return totalFiles, totalDirs, successFiles
