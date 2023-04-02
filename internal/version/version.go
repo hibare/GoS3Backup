@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/hibare/GoS3Backup/internal/constants"
 	log "github.com/sirupsen/logrus"
@@ -47,7 +48,7 @@ func CheckLatestRelease() {
 		return
 	}
 
-	LatestVersion = release.TagName
+	LatestVersion = strings.TrimPrefix(release.TagName, "v")
 
 	status, _ := IsNewVersionAvailable()
 	log.Infof("Version update available: %v, Current version: %s, Latest Version: %s", status, CurrentVersion, LatestVersion)
