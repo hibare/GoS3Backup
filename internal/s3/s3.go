@@ -9,6 +9,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 	"github.com/hibare/GoS3Backup/internal/config"
 	"github.com/hibare/GoS3Backup/internal/utils"
 	log "github.com/sirupsen/logrus"
@@ -60,6 +61,43 @@ func Upload(sess *session.Session, bucket, prefix, baseDir string) (int, int, in
 		successFiles += 1
 		log.Infof("Uploaded %s to S3://%s/%s", file, bucket, key)
 	}
+
+	return totalFiles, totalDirs, successFiles
+}
+
+func UploadZip(sess *session.Session, bucket, prefix, baseDir string) (int, int, int) {
+	totalFiles, totalDirs, successFiles := 0, 0, 0
+
+	err, zipPath, totalFiles, totalDirs, successFiles := utils.ZipDir(baseDir)
+
+	if err != nil {
+		log.Errorf("Error creating zip file: %v", err)
+		return totalFiles, totalDirs, 0
+	}
+
+	// Create an S3 uploader using the session
+	uploader := s3manager.NewUploader(sess)
+
+	// Open the file to upload
+	f, err := os.Open(zipPath)
+	if err != nil {
+		log.Errorf("Failed to open file %v", err)
+		return totalFiles, totalDirs, 0
+	}
+	defer f.Close()
+
+	// Upload the file to S3
+	key := filepath.Join(prefix, filepath.Base(zipPath))
+	_, err = uploader.Upload(&s3manager.UploadInput{
+		Bucket: aws.String(bucket),
+		Key:    aws.String(key),
+		Body:   f,
+	})
+	if err != nil {
+		log.Errorf("Failed to upload file %v", err)
+		return totalFiles, totalDirs, 0
+	}
+	log.Infof("Uploaded %s to S3://%s/%s", zipPath, bucket, key)
 
 	return totalFiles, totalDirs, successFiles
 }

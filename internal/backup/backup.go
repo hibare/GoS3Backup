@@ -3,6 +3,7 @@ package backup
 import (
 	"path/filepath"
 
+	"github.com/aws/aws-sdk-go/aws/session"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/hibare/GoS3Backup/internal/config"
@@ -17,11 +18,19 @@ func Backup() {
 	prefix := utils.GetTimeStampedPrefix(config.Current.S3.Prefix, config.Current.Backup.Hostname)
 	log.Infof("prefix: %s", prefix)
 
+	var uploadFunc func(*session.Session, string, string, string) (int, int, int)
+
+	if config.Current.Backup.ZipDirs {
+		uploadFunc = s3.UploadZip
+	} else {
+		uploadFunc = s3.Upload
+	}
+
 	// Loop through individual backup dir & perform backup
 	for _, dir := range config.Current.Backup.Dirs {
 		log.Infof("Processing path %s", dir)
 
-		totalFiles, totalDirs, successFiles := s3.Upload(sess, config.Current.S3.Bucket, prefix, dir)
+		totalFiles, totalDirs, successFiles := uploadFunc(sess, config.Current.S3.Bucket, prefix, dir)
 
 		if successFiles <= 0 {
 			log.Warnf("Uploaded files %d/%d", successFiles, totalFiles)
