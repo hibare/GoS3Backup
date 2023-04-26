@@ -68,7 +68,7 @@ func Upload(sess *session.Session, bucket, prefix, baseDir string) (int, int, in
 func UploadZip(sess *session.Session, bucket, prefix, baseDir string) (int, int, int) {
 	totalFiles, totalDirs, successFiles := 0, 0, 0
 
-	err, zipPath, totalFiles, totalDirs, successFiles := utils.ZipDir(baseDir)
+	err, zipPath, totalFiles, totalDirs, successFiles := utils.ArchiveDir(baseDir)
 
 	if err != nil {
 		log.Errorf("Error creating zip file: %v", err)

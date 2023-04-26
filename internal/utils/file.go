@@ -48,7 +48,7 @@ func ListFilesDirs(root string, exclude []*regexp.Regexp) ([]string, []string) {
 	return files, dirs
 }
 
-func ZipDir(dirPath string) (error, string, int, int, int) {
+func ArchiveDir(dirPath string) (error, string, int, int, int) {
 	dirPath = filepath.Clean(dirPath)
 	dirName := filepath.Base(dirPath)
 	zipName := fmt.Sprintf("%s.zip", dirName)
@@ -78,28 +78,26 @@ func ZipDir(dirPath string) (error, string, int, int, int) {
 
 		totalFiles++
 
-		file, err := os.Open(path)
-		if err != nil {
-			log.Errorf("Failed to open file: %v", err)
-			return nil
-		}
-		defer file.Close()
-
-		relPath, err := filepath.Rel(dirPath, path)
-		if err != nil {
-			log.Errorf("Failed to get relative path: %v", err)
-			return nil
-		}
-
 		info, err := d.Info()
 		if err != nil {
 			log.Errorf("Failed to get file info: %v", err)
 			return nil
 		}
 
+		if !info.Mode().IsRegular() {
+			log.Warnf("%s is not a regular file", path)
+			return nil
+		}
+
 		header, err := zip.FileInfoHeader(info)
 		if err != nil {
 			log.Errorf("Failed to create header: %v", err)
+			return nil
+		}
+
+		relPath, err := filepath.Rel(dirPath, path)
+		if err != nil {
+			log.Errorf("Failed to get relative path: %v", err)
 			return nil
 		}
 		header.Name = filepath.ToSlash(filepath.Join(relPath))
@@ -110,11 +108,20 @@ func ZipDir(dirPath string) (error, string, int, int, int) {
 			return nil
 		}
 
+		file, err := os.Open(path)
+		if err != nil {
+			log.Errorf("Failed to open file: %v", err)
+			return nil
+		}
+
 		_, err = io.Copy(writer, file)
 		if err != nil {
+			file.Close()
 			log.Errorf("Failed to write file to archive: %v", err)
 			return nil
 		}
+		file.Close()
+
 		successFiles++
 
 		return nil
