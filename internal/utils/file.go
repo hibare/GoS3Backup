@@ -6,50 +6,54 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"regexp"
 
 	log "github.com/sirupsen/logrus"
 )
 
-func ListFilesDirs(path string) ([]string, []string) {
-	var (
-		files []string
-		Dirs  []string
-	)
+func ListFilesDirs(root string, exclude []*regexp.Regexp) ([]string, []string) {
+	var files []string
+	var dirs []string
 
-	filesInfo, err := os.ReadDir(path)
-	if err != nil {
-		log.Errorf("Error reading directory: %v", err)
-		return files, Dirs
-	}
-
-	// Recursively traverse directory to list files & dirs.
-	for _, file := range filesInfo {
-		if file.IsDir() {
-			subdirPath := filepath.Join(path, file.Name())
-			subFiles, subDirs := ListFilesDirs(subdirPath)
-			files = append(files, subFiles...)
-			Dirs = append(Dirs, subdirPath)
-			for _, dir := range subDirs {
-				Dirs = append(Dirs, filepath.Join(path, dir))
-			}
-		} else {
-			files = append(files, filepath.Join(path, file.Name()))
+	readDir := func(dir string, d os.DirEntry, err error) error {
+		if err != nil {
+			return err
 		}
+
+		if d.IsDir() {
+			// Check if directory matches any of the exclude patterns
+			for _, e := range exclude {
+				if e.MatchString(d.Name()) {
+					return filepath.SkipDir
+				}
+			}
+
+			dirs = append(dirs, filepath.Join(dir, d.Name()))
+		} else {
+			// Check if file matches any of the exclude patterns
+			for _, e := range exclude {
+				if e.MatchString(d.Name()) {
+					return nil
+				}
+			}
+
+			files = append(files, filepath.Join(dir, d.Name()))
+		}
+
+		return nil
 	}
 
-	return files, Dirs
+	_ = filepath.WalkDir(root, readDir)
+
+	return files, dirs
 }
 
 func ZipDir(dirPath string) (error, string, int, int, int) {
+	dirPath = filepath.Clean(dirPath)
 	dirName := filepath.Base(dirPath)
 	zipName := fmt.Sprintf("%s.zip", dirName)
 	zipPath := filepath.Join(os.TempDir(), zipName)
 	totalFiles, totalDirs, successFiles := 0, 0, 0
-
-	files, dirs := ListFilesDirs(dirPath)
-	totalFiles = len(files)
-	totalDirs = len(dirs)
-	log.Infof("Found %d files from %d directories", totalFiles, totalDirs)
 
 	// Create a temporary file to hold the zip archive
 	zipFile, err := os.Create(zipPath)
@@ -62,55 +66,61 @@ func ZipDir(dirPath string) (error, string, int, int, int) {
 	zipWriter := zip.NewWriter(zipFile)
 	defer zipWriter.Close()
 
-	// Add each file to the zip archive
-	for _, file := range files {
-		// Open the file
-		fileToZip, err := os.Open(file)
+	err = filepath.WalkDir(dirPath, func(path string, d os.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+
+		if d.IsDir() {
+			totalDirs++
+			return nil
+		}
+
+		totalFiles++
+
+		file, err := os.Open(path)
 		if err != nil {
 			log.Errorf("Failed to open file: %v", err)
-			continue
+			return nil
 		}
-		defer fileToZip.Close()
+		defer file.Close()
 
-		// Get the file info to create the zip header
-		info, err := fileToZip.Stat()
+		relPath, err := filepath.Rel(dirPath, path)
+		if err != nil {
+			log.Errorf("Failed to get relative path: %v", err)
+			return nil
+		}
+
+		info, err := d.Info()
 		if err != nil {
 			log.Errorf("Failed to get file info: %v", err)
-			continue
+			return nil
 		}
 
-		// Create a new zip file header for the current file
 		header, err := zip.FileInfoHeader(info)
 		if err != nil {
 			log.Errorf("Failed to create header: %v", err)
-			continue
+			return nil
 		}
+		header.Name = filepath.ToSlash(filepath.Join(relPath))
 
-		// Set the name of the file relative to the base directory to include in the archive
-		relPath, err := filepath.Rel(dirPath, file)
-		if err != nil {
-			log.Errorf("Failed to get relative path: %v", err)
-			continue
-		}
-		header.Name = relPath
-
-		// Add the header to the zip archive
 		writer, err := zipWriter.CreateHeader(header)
 		if err != nil {
 			log.Errorf("Failed to create header: %v", err)
-			continue
+			return nil
 		}
 
-		// Copy the contents of the file to the zip archive
-		_, err = io.Copy(writer, fileToZip)
+		_, err = io.Copy(writer, file)
 		if err != nil {
 			log.Errorf("Failed to write file to archive: %v", err)
-			continue
+			return nil
 		}
 		successFiles++
-	}
+
+		return nil
+	})
 
 	log.Infof("Created archive '%s' for directory '%s'", zipPath, dirPath)
-	return nil, zipPath, totalFiles, totalDirs, successFiles
+	return err, zipPath, totalFiles, totalDirs, successFiles
 
 }

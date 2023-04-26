@@ -35,7 +35,7 @@ func Upload(sess *session.Session, bucket, prefix, baseDir string) (int, int, in
 	client := s3.New(sess)
 	baseDirParentPath := filepath.Dir(baseDir)
 
-	files, dirs := utils.ListFilesDirs(baseDir)
+	files, dirs := utils.ListFilesDirs(baseDir, nil)
 
 	totalFiles = len(files)
 	totalDirs = len(dirs)
@@ -85,6 +85,8 @@ func UploadZip(sess *session.Session, bucket, prefix, baseDir string) (int, int,
 		return totalFiles, totalDirs, 0
 	}
 	defer f.Close()
+
+	log.Infof("Uploading file %s to S3://%s/%s", zipPath, bucket, prefix)
 
 	// Upload the file to S3
 	key := filepath.Join(prefix, filepath.Base(zipPath))
