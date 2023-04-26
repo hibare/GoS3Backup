@@ -20,7 +20,8 @@ func Backup() {
 
 	var uploadFunc func(*session.Session, string, string, string) (int, int, int)
 
-	if config.Current.Backup.ZipDirs {
+	if config.Current.Backup.ArchiveDirs {
+		log.Info("Archiving dirs")
 		uploadFunc = s3.UploadZip
 	} else {
 		uploadFunc = s3.Upload
