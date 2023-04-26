@@ -101,6 +101,11 @@ func UploadZip(sess *session.Session, bucket, prefix, baseDir string) (int, int,
 	}
 	log.Infof("Uploaded %s to S3://%s/%s", zipPath, bucket, key)
 
+	if err = os.Remove(zipPath); err != nil {
+		log.Errorf("Failed to remove zip file %v", err)
+	}
+	log.Infof("Removed zip file %s", zipPath)
+
 	return totalFiles, totalDirs, successFiles
 }
 
