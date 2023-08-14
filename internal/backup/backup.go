@@ -6,6 +6,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	log "github.com/sirupsen/logrus"
 
+	commonDateTimes "github.com/hibare/GoCommon/pkg/datetime"
 	"github.com/hibare/GoS3Backup/internal/config"
 	"github.com/hibare/GoS3Backup/internal/constants"
 	"github.com/hibare/GoS3Backup/internal/notifiers"
@@ -69,7 +70,7 @@ func ListBackups() []string {
 	keys = utils.TrimPrefix(keys, prefix)
 
 	// Sort datetime strings by descending order
-	sortedKeys := utils.SortDateTimes(keys)
+	sortedKeys := commonDateTimes.SortDateTimes(keys)
 
 	return sortedKeys
 }
