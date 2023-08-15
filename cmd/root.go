@@ -6,8 +6,7 @@ import (
 
 	"github.com/go-co-op/gocron"
 	"github.com/hibare/GoS3Backup/cmd/backup"
-	"github.com/hibare/GoS3Backup/cmd/clean"
-	initialize "github.com/hibare/GoS3Backup/cmd/init"
+	configCmd "github.com/hibare/GoS3Backup/cmd/config"
 	backup_int "github.com/hibare/GoS3Backup/internal/backup"
 	"github.com/hibare/GoS3Backup/internal/config"
 	"github.com/hibare/GoS3Backup/internal/constants"
@@ -23,7 +22,6 @@ var rootCmd = &cobra.Command{
 	Long:    "",
 	Version: version.CurrentVersion,
 	Run: func(cmd *cobra.Command, args []string) {
-		go version.CheckLatestRelease()
 
 		s := gocron.NewScheduler(time.UTC)
 
@@ -38,7 +36,7 @@ var rootCmd = &cobra.Command{
 
 		// Schedule version check job
 		if _, err := s.Cron(constants.VersioCheckCron).Do(func() {
-			version.CheckLatestRelease()
+			version.V.CheckUpdate()
 		}); err != nil {
 			log.Warnf("Failed to scedule version check job: %v", err)
 		}
@@ -55,9 +53,16 @@ func Execute() {
 }
 
 func init() {
-	rootCmd.AddCommand(initialize.InitCmd)
-	rootCmd.AddCommand(clean.CleanCmd)
+	rootCmd.AddCommand(configCmd.ConfigCmd)
 	rootCmd.AddCommand(backup.BackupCmd)
 
 	cobra.OnInitialize(logging.SetupLogger, config.LoadConfig)
+
+	initialVersionCheck := func() {
+		version.V.CheckUpdate()
+		if version.V.NewVersionAvailable {
+			log.Info(version.V.GetUpdateNotification())
+		}
+	}
+	go initialVersionCheck()
 }

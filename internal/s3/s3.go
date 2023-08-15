@@ -10,8 +10,8 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
+	commonFiles "github.com/hibare/GoCommon/pkg/file"
 	"github.com/hibare/GoS3Backup/internal/config"
-	"github.com/hibare/GoS3Backup/internal/utils"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -35,7 +35,7 @@ func Upload(sess *session.Session, bucket, prefix, baseDir string) (int, int, in
 	client := s3.New(sess)
 	baseDirParentPath := filepath.Dir(baseDir)
 
-	files, dirs := utils.ListFilesDirs(baseDir, nil)
+	files, dirs := commonFiles.ListFilesDirs(baseDir, nil)
 
 	totalFiles = len(files)
 	totalDirs = len(dirs)
@@ -68,7 +68,7 @@ func Upload(sess *session.Session, bucket, prefix, baseDir string) (int, int, in
 func UploadZip(sess *session.Session, bucket, prefix, baseDir string) (int, int, int) {
 	totalFiles, totalDirs, successFiles := 0, 0, 0
 
-	err, zipPath, totalFiles, totalDirs, successFiles := utils.ArchiveDir(baseDir)
+	zipPath, totalFiles, totalDirs, successFiles, err := commonFiles.ArchiveDir(baseDir)
 
 	if err != nil {
 		log.Errorf("Error creating zip file: %v", err)

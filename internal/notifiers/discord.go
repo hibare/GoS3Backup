@@ -42,10 +42,9 @@ type DiscordComponent struct {
 }
 
 func (d *DiscordWebhookMessage) AddFooter() {
-	isUpdate, LatestVersion := version.IsNewVersionAvailable()
-	if isUpdate {
+	if version.V.NewVersionAvailable {
 		footer := DiscordEmbedFooter{
-			Text: fmt.Sprintf(version.UpdateNotificationMessage, LatestVersion),
+			Text: version.V.GetUpdateNotification(),
 		}
 		d.Embeds[0].Footer = footer
 	}
