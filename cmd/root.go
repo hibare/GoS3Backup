@@ -22,7 +22,6 @@ var rootCmd = &cobra.Command{
 	Long:    "",
 	Version: version.CurrentVersion,
 	Run: func(cmd *cobra.Command, args []string) {
-		go version.CheckLatestRelease()
 
 		s := gocron.NewScheduler(time.UTC)
 
@@ -37,7 +36,7 @@ var rootCmd = &cobra.Command{
 
 		// Schedule version check job
 		if _, err := s.Cron(constants.VersioCheckCron).Do(func() {
-			version.CheckLatestRelease()
+			version.V.CheckUpdate()
 		}); err != nil {
 			log.Warnf("Failed to scedule version check job: %v", err)
 		}
@@ -58,4 +57,12 @@ func init() {
 	rootCmd.AddCommand(backup.BackupCmd)
 
 	cobra.OnInitialize(logging.SetupLogger, config.LoadConfig)
+
+	initialVersionCheck := func() {
+		version.V.CheckUpdate()
+		if version.V.NewVersionAvailable {
+			log.Info(version.V.GetUpdateNotification())
+		}
+	}
+	go initialVersionCheck()
 }
