@@ -1,8 +1,8 @@
 package config
 
 import (
-	commonConfig "github.com/hibare/GoCommon/pkg/config"
-	commonUtils "github.com/hibare/GoCommon/pkg/utils"
+	commonConfig "github.com/hibare/GoCommon/v2/pkg/config"
+	commonUtils "github.com/hibare/GoCommon/v2/pkg/utils"
 	"github.com/hibare/GoS3Backup/internal/constants"
 	log "github.com/sirupsen/logrus"
 )
@@ -97,5 +97,4 @@ func init() {
 	if err := BC.Init(); err != nil {
 		panic(err)
 	}
-
 }

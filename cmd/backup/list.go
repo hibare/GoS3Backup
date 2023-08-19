@@ -15,8 +15,10 @@ var listCmd = &cobra.Command{
 	Short: "List backups",
 	Long:  "",
 	Run: func(cmd *cobra.Command, args []string) {
-		backups := backup.ListBackups()
-		if len(backups) <= 0 {
+		backups, err := backup.ListBackups()
+		if err != nil {
+			panic(err)
+		} else if len(backups) <= 0 {
 			fmt.Println("No backups found")
 		} else {
 			fmt.Printf("\nTotal backups %d\n", len(backups))
