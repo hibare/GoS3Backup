@@ -1,85 +1,149 @@
 package backup
 
 import (
+	"fmt"
+	"os"
 	"path/filepath"
 
-	"github.com/aws/aws-sdk-go/aws/session"
 	log "github.com/sirupsen/logrus"
 
-	commonDateTimes "github.com/hibare/GoCommon/pkg/datetime"
+	commonDateTimes "github.com/hibare/GoCommon/v2/pkg/datetime"
+	commonFiles "github.com/hibare/GoCommon/v2/pkg/file"
+	commonS3 "github.com/hibare/GoCommon/v2/pkg/s3"
 	"github.com/hibare/GoS3Backup/internal/config"
 	"github.com/hibare/GoS3Backup/internal/constants"
 	"github.com/hibare/GoS3Backup/internal/notifiers"
-	"github.com/hibare/GoS3Backup/internal/s3"
-	"github.com/hibare/GoS3Backup/internal/utils"
 )
 
 func Backup() {
-	sess := s3.NewSession(config.Current.S3)
-	prefix := utils.GetTimeStampedPrefix(config.Current.S3.Prefix, config.Current.Backup.Hostname)
-	log.Infof("prefix: %s", prefix)
+	s3 := commonS3.S3{
+		Endpoint:  config.Current.S3.Endpoint,
+		Region:    config.Current.S3.Region,
+		AccessKey: config.Current.S3.AccessKey,
+		SecretKey: config.Current.S3.SecretKey,
+		Bucket:    config.Current.S3.Bucket,
+	}
 
-	var uploadFunc func(*session.Session, string, string, string) (int, int, int)
+	s3.SetPrefix(config.Current.S3.Prefix, config.Current.Backup.Hostname, true)
 
-	if config.Current.Backup.ArchiveDirs {
-		log.Info("Archiving dirs")
-		uploadFunc = s3.UploadZip
-	} else {
-		uploadFunc = s3.Upload
+	if err := s3.NewSession(); err != nil {
+		log.Fatalf("Error creating session: %v", err)
+		return
 	}
 
 	// Loop through individual backup dir & perform backup
 	for _, dir := range config.Current.Backup.Dirs {
 		log.Infof("Processing path %s", dir)
 
-		totalFiles, totalDirs, successFiles := uploadFunc(sess, config.Current.S3.Bucket, prefix, dir)
+		if config.Current.Backup.ArchiveDirs {
+			log.Infof("Archiving dir %s", dir)
+			zipPath, totalFiles, totalDirs, successFiles, err := commonFiles.ArchiveDir(dir)
+			if err != nil {
+				log.Warnf("Archiving failed %s", dir)
+				notifiers.BackupFailedNotification("", dir, totalDirs, totalFiles)
+				continue
+			}
 
-		if successFiles <= 0 {
-			log.Warnf("Uploaded files %d/%d", successFiles, totalFiles)
-			notifiers.BackupFailedNotification("", dir, totalDirs, totalFiles)
-			continue
+			if successFiles <= 0 {
+				err := fmt.Errorf("Failed to archive")
+				log.Warnf("Uploading failed %s: %s", dir, err)
+				notifiers.BackupFailedNotification(err.Error(), dir, totalDirs, totalFiles)
+				continue
+			}
+
+			log.Infof("Uploading files %d/%d", successFiles, totalFiles)
+			key, err := s3.UploadFile(zipPath)
+
+			if err != nil {
+				log.Warnf("Uploading failed %s: %s", dir, err)
+				notifiers.BackupFailedNotification(err.Error(), dir, totalDirs, totalFiles)
+				continue
+			}
+
+			log.Warnf("Uploaded files %d/%d at %s", successFiles, totalFiles, key)
+			notifiers.BackupSuccessfulNotification(dir, totalDirs, totalFiles, successFiles, key)
+			os.Remove(zipPath)
+
+		} else {
+			log.Infof("Uploading dir %s", dir)
+			key, totalFiles, totalDirs, successFiles := s3.UploadDir(dir)
+
+			if successFiles <= 0 {
+				log.Warnf("Uploading failed %s", dir)
+				notifiers.BackupFailedNotification("", dir, totalDirs, totalFiles)
+				continue
+			}
+
+			log.Warnf("Uploaded files %d/%d at %s", successFiles, totalFiles, s3.Prefix)
+			notifiers.BackupSuccessfulNotification(dir, totalDirs, totalFiles, successFiles, key)
 		}
 
-		notifiers.BackupSuccessfulNotification(dir, totalDirs, totalFiles, successFiles, prefix)
 	}
 	log.Info("Backup job ran successfully")
 }
 
-func ListBackups() []string {
+func ListBackups() ([]string, error) {
 	var keys []string
-	sess := s3.NewSession(config.Current.S3)
-	prefix := utils.GetPrefix(config.Current.S3.Prefix, config.Current.Backup.Hostname)
-	log.Infof("prefix: %s", prefix)
+
+	s3 := commonS3.S3{
+		Endpoint:  config.Current.S3.Endpoint,
+		Region:    config.Current.S3.Region,
+		AccessKey: config.Current.S3.AccessKey,
+		SecretKey: config.Current.S3.SecretKey,
+		Bucket:    config.Current.S3.Bucket,
+	}
+
+	s3.SetPrefix(config.Current.S3.Prefix, config.Current.Backup.Hostname, false)
+
+	if err := s3.NewSession(); err != nil {
+		log.Fatalf("Error creating session: %v", err)
+		return keys, err
+	}
+
+	log.Infof("prefix: %s", s3.Prefix)
 
 	// Retrieve objects by prefix
-	keys, err := s3.ListObjectsAtPrefixRoot(sess, config.Current.S3.Bucket, prefix)
+	keys, err := s3.ListObjectsAtPrefixRoot()
 	if err != nil {
 		log.Errorf("Error listing objects: %v", err)
-		notifiers.BackupDeletionFailureNotification(err.Error(), constants.NotAvailable)
-		return keys
+		return keys, err
 	}
 
 	if len(keys) == 0 {
 		log.Info("No backups found")
-		return keys
+		return keys, nil
 	}
 
 	log.Infof("Found %d backups", len(keys))
 
 	// Remove prefix from key to get datetime string
-	keys = utils.TrimPrefix(keys, prefix)
+	keys = s3.TrimPrefix(keys)
 
 	// Sort datetime strings by descending order
 	sortedKeys := commonDateTimes.SortDateTimes(keys)
 
-	return sortedKeys
+	return sortedKeys, nil
 }
 
 func PurgeOldBackups() {
-	sess := s3.NewSession(config.Current.S3)
-	prefix := utils.GetPrefix(config.Current.S3.Prefix, config.Current.Backup.Hostname)
+	s3 := commonS3.S3{
+		Endpoint:  config.Current.S3.Endpoint,
+		Region:    config.Current.S3.Region,
+		AccessKey: config.Current.S3.AccessKey,
+		SecretKey: config.Current.S3.SecretKey,
+		Bucket:    config.Current.S3.Bucket,
+	}
+	s3.SetPrefix(config.Current.S3.Prefix, config.Current.Backup.Hostname, false)
 
-	backups := ListBackups()
+	if err := s3.NewSession(); err != nil {
+		log.Fatalf("Error creating session: %v", err)
+	}
+
+	backups, err := ListBackups()
+	if err != nil {
+		notifiers.BackupDeletionFailureNotification(err.Error(), constants.NotAvailable)
+		return
+	}
 
 	if len(backups) <= int(config.Current.Backup.RetentionCount) {
 		log.Info("No backups to delete")
@@ -92,9 +156,9 @@ func PurgeOldBackups() {
 	// Delete datetime keys from S3 exceding retention count
 	for _, key := range keysToDelete {
 		log.Infof("Deleting backup %s", key)
-		key = filepath.Join(prefix, key)
+		key = filepath.Join(s3.Prefix, key)
 
-		if err := s3.DeleteObjects(sess, config.Current.S3.Bucket, key, true); err != nil {
+		if err := s3.DeleteObjects(key, true); err != nil {
 			log.Errorf("Error deleting backup %s: %v", key, err)
 			notifiers.BackupDeletionFailureNotification(err.Error(), key)
 			continue

@@ -3,7 +3,7 @@ package version
 import (
 	"fmt"
 
-	"github.com/hibare/GoCommon/pkg/version"
+	"github.com/hibare/GoCommon/v2/pkg/version"
 	"github.com/hibare/GoS3Backup/internal/constants"
 )
 
