@@ -1,63 +1,36 @@
 package notifiers
 
 import (
-	"bytes"
-	"encoding/json"
 	"fmt"
-	"net/http"
 	"strconv"
 
+	"github.com/hibare/GoCommon/v2/pkg/notifiers/discord"
 	"github.com/hibare/GoS3Backup/internal/config"
+	"github.com/hibare/GoS3Backup/internal/constants"
 	"github.com/hibare/GoS3Backup/internal/version"
 	log "github.com/sirupsen/logrus"
 )
 
-type DiscordWebhookMessage struct {
-	Embeds     []DiscordEmbed     `json:"embeds"`
-	Components []DiscordComponent `json:"components"`
-	Username   string             `json:"username"`
-	Content    string             `json:"content"`
-}
-
-type DiscordEmbed struct {
-	Title       string              `json:"title"`
-	Description string              `json:"description"`
-	Color       int                 `json:"color"`
-	Footer      DiscordEmbedFooter  `json:"footer"`
-	Fields      []DiscordEmbedField `json:"fields"`
-}
-
-type DiscordEmbedField struct {
-	Name   string `json:"name"`
-	Value  string `json:"value"`
-	Inline bool   `json:"inline,omitempty"`
-}
-
-type DiscordEmbedFooter struct {
-	Text string `json:"text"`
-}
-
-type DiscordComponent struct {
-	// Define struct for Discord components if needed
-}
-
-func (d *DiscordWebhookMessage) AddFooter() {
-	if version.V.NewVersionAvailable {
-		footer := DiscordEmbedFooter{
-			Text: version.V.GetUpdateNotification(),
-		}
-		d.Embeds[0].Footer = footer
+func runDiscordPrechecks() error {
+	if !config.Current.Notifiers.Discord.Enabled {
+		return ErrNotifierDisabled
 	}
+	return nil
 }
 
-func DiscordBackupSuccessfulNotification(webhookUrl string, hostname, directory string, totalDirs, totalFiles, successFiles int, key string) error {
-	webhookMessage := DiscordWebhookMessage{
-		Embeds: []DiscordEmbed{
+func discordNotifyBackupSuccess(directory string, totalDirs, totalFiles, successFiles int, key string) {
+	if err := runDiscordPrechecks(); err != nil {
+		log.Error(err)
+		return
+	}
+
+	message := discord.Message{
+		Embeds: []discord.Embed{
 			{
 				Title:       "Directory",
 				Description: directory,
 				Color:       1498748,
-				Fields: []DiscordEmbedField{
+				Fields: []discord.EmbedField{
 					{
 						Name:   "Key",
 						Value:  key,
@@ -76,24 +49,35 @@ func DiscordBackupSuccessfulNotification(webhookUrl string, hostname, directory 
 				},
 			},
 		},
-		Components: []DiscordComponent{},
-		Username:   "Backup Job",
-		Content:    fmt.Sprintf("**Backup Successful** - *%s*", hostname),
+		Components: []discord.Component{},
+		Username:   constants.ProgramIdentifier,
+		Content:    fmt.Sprintf("**Backup Successful** - *%s*", config.Current.Backup.Hostname),
 	}
-	webhookMessage.AddFooter()
 
-	return SendMessage(webhookUrl, webhookMessage)
+	if version.V.NewVersionAvailable {
+		if err := message.AddFooter(version.V.GetUpdateNotification()); err != nil {
+			log.Warn(err)
+		}
+	}
 
+	if err := message.Send(config.Current.Notifiers.Discord.Webhook); err != nil {
+		log.Error(err)
+	}
 }
 
-func DiscordBackupFailedNotification(webhookUrl string, hostname, err, directory string, totalDirs, totalFiles int) error {
-	webhookMessage := DiscordWebhookMessage{
-		Embeds: []DiscordEmbed{
+func discordNotifyBackupFailure(directory string, totalDirs, totalFiles int, err error) {
+	if err := runDiscordPrechecks(); err != nil {
+		log.Error(err)
+		return
+	}
+
+	message := discord.Message{
+		Embeds: []discord.Embed{
 			{
 				Title:       "Error",
-				Description: err,
+				Description: err.Error(),
 				Color:       14554702,
-				Fields: []DiscordEmbedField{
+				Fields: []discord.EmbedField{
 					{
 						Name:   "Directory",
 						Value:  directory,
@@ -112,23 +96,35 @@ func DiscordBackupFailedNotification(webhookUrl string, hostname, err, directory
 				},
 			},
 		},
-		Components: []DiscordComponent{},
-		Username:   "Backup Job",
-		Content:    fmt.Sprintf("**Backup Failed** - *%s*", hostname),
+		Components: []discord.Component{},
+		Username:   constants.ProgramIdentifier,
+		Content:    fmt.Sprintf("**Backup Failed** - *%s*", config.Current.Backup.Hostname),
 	}
-	webhookMessage.AddFooter()
 
-	return SendMessage(webhookUrl, webhookMessage)
+	if version.V.NewVersionAvailable {
+		if err := message.AddFooter(version.V.GetUpdateNotification()); err != nil {
+			log.Warn(err)
+		}
+	}
+
+	if err := message.Send(config.Current.Notifiers.Discord.Webhook); err != nil {
+		log.Error(err)
+	}
 }
 
-func DiscordBackupDeletionFailureNotification(webhookUrl string, hostname, err, key string) error {
-	webhookMessage := DiscordWebhookMessage{
-		Embeds: []DiscordEmbed{
+func discordNotifyBackupDeleteFailure(key string, err error) {
+	if err := runDiscordPrechecks(); err != nil {
+		log.Error(err)
+		return
+	}
+
+	message := discord.Message{
+		Embeds: []discord.Embed{
 			{
 				Title:       "Error",
-				Description: err,
+				Description: err.Error(),
 				Color:       14590998,
-				Fields: []DiscordEmbedField{
+				Fields: []discord.EmbedField{
 					{
 						Name:   "Key",
 						Value:  key,
@@ -137,35 +133,18 @@ func DiscordBackupDeletionFailureNotification(webhookUrl string, hostname, err, 
 				},
 			},
 		},
-		Components: []DiscordComponent{},
-		Username:   "Backup Job",
-		Content:    fmt.Sprintf("**Backup Deletion Failed** - *%s*", hostname),
-	}
-	webhookMessage.AddFooter()
-
-	return SendMessage(webhookUrl, webhookMessage)
-}
-
-func SendMessage(webhookUrl string, message DiscordWebhookMessage) error {
-	if config.Current.Notifiers.Discord.Webhook != "" && !config.Current.Notifiers.Discord.Enabled {
-		log.Warning("Discord notifier not enabled")
-		return nil
+		Components: []discord.Component{},
+		Username:   constants.ProgramIdentifier,
+		Content:    fmt.Sprintf("**Backup Deletion Failed** - *%s*", config.Current.Backup.Hostname),
 	}
 
-	payload, err := json.Marshal(message)
-	if err != nil {
-		return &json.SyntaxError{}
+	if version.V.NewVersionAvailable {
+		if err := message.AddFooter(version.V.GetUpdateNotification()); err != nil {
+			log.Warn(err)
+		}
 	}
 
-	resp, err := http.Post(webhookUrl, "application/json", bytes.NewBuffer(payload))
-	if err != nil {
-		return err
+	if err := message.Send(config.Current.Notifiers.Discord.Webhook); err != nil {
+		log.Error(err)
 	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return err
-	}
-
-	return nil
 }
