@@ -70,6 +70,11 @@ func LoadConfig() {
 		Current.Backup.Cron = constants.DefaultCron
 	}
 
+	// If notifier webhook is empty, set status to disable
+	if Current.Notifiers.Discord.Webhook == "" {
+		Current.Notifiers.Discord.Enabled = false
+	}
+
 	Current.Backup.Hostname = commonUtils.GetHostname()
 }
 

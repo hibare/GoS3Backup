@@ -1,7 +1,7 @@
 package backup
 
 import (
-	"fmt"
+	"errors"
 	"os"
 	"path/filepath"
 
@@ -13,6 +13,11 @@ import (
 	"github.com/hibare/GoS3Backup/internal/config"
 	"github.com/hibare/GoS3Backup/internal/constants"
 	"github.com/hibare/GoS3Backup/internal/notifiers"
+)
+
+var (
+	ErrArchiving          = errors.New("error archiving")
+	ErrNoProcessableFiles = errors.New("no processable files")
 )
 
 func Backup() {
@@ -40,28 +45,26 @@ func Backup() {
 			zipPath, totalFiles, totalDirs, successFiles, err := commonFiles.ArchiveDir(dir)
 			if err != nil {
 				log.Warnf("Archiving failed %s", dir)
-				notifiers.BackupFailedNotification("", dir, totalDirs, totalFiles)
+				notifiers.NotifyBackupFailure(dir, totalDirs, totalFiles, err)
 				continue
 			}
 
 			if successFiles <= 0 {
-				err := fmt.Errorf("Failed to archive")
 				log.Warnf("Uploading failed %s: %s", dir, err)
-				notifiers.BackupFailedNotification(err.Error(), dir, totalDirs, totalFiles)
+				notifiers.NotifyBackupFailure(dir, totalDirs, totalFiles, ErrNoProcessableFiles)
 				continue
 			}
 
 			log.Infof("Uploading files %d/%d", successFiles, totalFiles)
 			key, err := s3.UploadFile(zipPath)
-
 			if err != nil {
 				log.Warnf("Uploading failed %s: %s", dir, err)
-				notifiers.BackupFailedNotification(err.Error(), dir, totalDirs, totalFiles)
+				notifiers.NotifyBackupFailure(dir, totalDirs, totalFiles, err)
 				continue
 			}
 
-			log.Warnf("Uploaded files %d/%d at %s", successFiles, totalFiles, key)
-			notifiers.BackupSuccessfulNotification(dir, totalDirs, totalFiles, successFiles, key)
+			log.Infof("Uploaded files %d/%d at %s", successFiles, totalFiles, key)
+			notifiers.NotifyBackupSuccess(dir, totalDirs, totalFiles, successFiles, key)
 			os.Remove(zipPath)
 
 		} else {
@@ -70,12 +73,12 @@ func Backup() {
 
 			if successFiles <= 0 {
 				log.Warnf("Uploading failed %s", dir)
-				notifiers.BackupFailedNotification("", dir, totalDirs, totalFiles)
+				notifiers.NotifyBackupFailure(dir, totalDirs, totalFiles, ErrNoProcessableFiles)
 				continue
 			}
 
 			log.Warnf("Uploaded files %d/%d at %s", successFiles, totalFiles, s3.Prefix)
-			notifiers.BackupSuccessfulNotification(dir, totalDirs, totalFiles, successFiles, key)
+			notifiers.NotifyBackupSuccess(dir, totalDirs, totalFiles, successFiles, key)
 		}
 
 	}
@@ -141,7 +144,7 @@ func PurgeOldBackups() {
 
 	backups, err := ListBackups()
 	if err != nil {
-		notifiers.BackupDeletionFailureNotification(err.Error(), constants.NotAvailable)
+		notifiers.NotifyBackupDeleteFailure(constants.NotAvailable, err)
 		return
 	}
 
@@ -160,7 +163,7 @@ func PurgeOldBackups() {
 
 		if err := s3.DeleteObjects(key, true); err != nil {
 			log.Errorf("Error deleting backup %s: %v", key, err)
-			notifiers.BackupDeletionFailureNotification(err.Error(), key)
+			notifiers.NotifyBackupDeleteFailure(key, err)
 			continue
 		}
 	}
