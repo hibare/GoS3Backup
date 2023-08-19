@@ -3,7 +3,7 @@ module github.com/hibare/GoS3Backup
 go 1.20
 
 require (
-	github.com/go-co-op/gocron v1.31.1
+	github.com/go-co-op/gocron v1.31.2
 	github.com/hibare/GoCommon/v2 v2.2.0
 	github.com/jedib0t/go-pretty/v6 v6.4.6
 	github.com/sirupsen/logrus v1.9.3
