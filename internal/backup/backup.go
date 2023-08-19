@@ -44,7 +44,7 @@ func Backup() {
 			log.Infof("Archiving dir %s", dir)
 			zipPath, totalFiles, totalDirs, successFiles, err := commonFiles.ArchiveDir(dir)
 			if err != nil {
-				log.Warnf("Archiving failed %s", dir)
+				log.Warnf("Archiving failed %s: %s", dir, err)
 				notifiers.NotifyBackupFailure(dir, totalDirs, totalFiles, err)
 				continue
 			}
