@@ -16,13 +16,24 @@ type S3Config struct {
 	Prefix    string `yaml:"prefix" mapstructure:"prefix"`
 }
 
+type GPGConfig struct {
+	KeyServer string `yaml:"key-server" mapstructure:"key-server"`
+	KeyID     string `yaml:"key-id" mapstructure:"key-id"`
+}
+
+type Encryption struct {
+	Enabled bool `yaml:"encrypt" mapstructure:"encrypt"`
+	GPG     GPGConfig
+}
+
 type BackupConfig struct {
-	Dirs           []string `yaml:"dirs" mapstructure:"dirs"`
-	Hostname       string   `yaml:"-"`
-	RetentionCount int      `yaml:"retention-count" mapstructure:"retention-count"`
-	DateTimeLayout string   `yaml:"date-time-layout" mapstructure:"date-time-layout"`
-	Cron           string   `yaml:"cron" mapstructure:"cron"`
-	ArchiveDirs    bool     `yaml:"archive-dirs" mapstructure:"archive-dirs"`
+	Dirs           []string   `yaml:"dirs" mapstructure:"dirs"`
+	Hostname       string     `yaml:"-"`
+	RetentionCount int        `yaml:"retention-count" mapstructure:"retention-count"`
+	DateTimeLayout string     `yaml:"date-time-layout" mapstructure:"date-time-layout"`
+	Cron           string     `yaml:"cron" mapstructure:"cron"`
+	ArchiveDirs    bool       `yaml:"archive-dirs" mapstructure:"archive-dirs"`
+	Encryption     Encryption `yaml:"encryption" mapstructure:"encryption"`
 }
 
 type DiscordNotifierConfig struct {
@@ -73,6 +84,16 @@ func LoadConfig() {
 	// If notifier webhook is empty, set status to disable
 	if Current.Notifiers.Discord.Webhook == "" {
 		Current.Notifiers.Discord.Enabled = false
+	}
+
+	// Check if encryption is enabled & encryption config is enabled
+	if Current.Backup.Encryption.Enabled && !Current.Backup.ArchiveDirs {
+		log.Warningf("Backup encryption is only available when archive dirs are enabled. Disabling encryption")
+		Current.Backup.Encryption.Enabled = false
+	} else if Current.Backup.Encryption.Enabled {
+		if Current.Backup.Encryption.GPG.KeyServer == "" || Current.Backup.Encryption.GPG.KeyID == "" {
+			log.Fatalf("Error backup encryption is enabled but encryption config is not set")
+		}
 	}
 
 	Current.Backup.Hostname = commonUtils.GetHostname()

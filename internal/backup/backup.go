@@ -7,6 +7,7 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
+	commonGPG "github.com/hibare/GoCommon/v2/pkg/crypto/gpg"
 	commonDateTimes "github.com/hibare/GoCommon/v2/pkg/datetime"
 	commonFiles "github.com/hibare/GoCommon/v2/pkg/file"
 	commonS3 "github.com/hibare/GoCommon/v2/pkg/s3"
@@ -44,7 +45,7 @@ func Backup() {
 			log.Infof("Archiving dir %s", dir)
 			zipPath, totalFiles, totalDirs, successFiles, err := commonFiles.ArchiveDir(dir)
 			if err != nil {
-				log.Warnf("Archiving failed %s", dir)
+				log.Warnf("Archiving failed %s: %s", dir, err)
 				notifiers.NotifyBackupFailure(dir, totalDirs, totalFiles, err)
 				continue
 			}
@@ -55,8 +56,30 @@ func Backup() {
 				continue
 			}
 
+			uploadPath := zipPath
+
+			if config.Current.Backup.Encryption.Enabled {
+				log.Infof("Encrypting file %s", zipPath)
+				gpg, err := commonGPG.DownloadGPGPubKey(config.Current.Backup.Encryption.GPG.KeyID, config.Current.Backup.Encryption.GPG.KeyServer)
+				if err != nil {
+					log.Warnf("Error downloading gpg key: %s", err)
+					notifiers.NotifyBackupFailure(dir, totalDirs, totalFiles, err)
+					continue
+				}
+
+				encryptedFilePath, err := gpg.EncryptFile(zipPath)
+				if err != nil {
+					log.Warnf("Error encrypting file: %s", err)
+					notifiers.NotifyBackupFailure(dir, totalDirs, totalFiles, err)
+					continue
+				}
+
+				uploadPath = encryptedFilePath
+				os.Remove(zipPath)
+			}
+
 			log.Infof("Uploading files %d/%d", successFiles, totalFiles)
-			key, err := s3.UploadFile(zipPath)
+			key, err := s3.UploadFile(uploadPath)
 			if err != nil {
 				log.Warnf("Uploading failed %s: %s", dir, err)
 				notifiers.NotifyBackupFailure(dir, totalDirs, totalFiles, err)
@@ -65,8 +88,7 @@ func Backup() {
 
 			log.Infof("Uploaded files %d/%d at %s", successFiles, totalFiles, key)
 			notifiers.NotifyBackupSuccess(dir, totalDirs, totalFiles, successFiles, key)
-			os.Remove(zipPath)
-
+			os.Remove(uploadPath)
 		} else {
 			log.Infof("Uploading dir %s", dir)
 			key, totalFiles, totalDirs, successFiles := s3.UploadDir(dir)
