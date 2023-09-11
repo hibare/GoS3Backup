@@ -7,7 +7,7 @@ import (
 	"github.com/go-co-op/gocron"
 	"github.com/hibare/GoS3Backup/cmd/backup"
 	configCmd "github.com/hibare/GoS3Backup/cmd/config"
-	backup_int "github.com/hibare/GoS3Backup/internal/backup"
+	intBackup "github.com/hibare/GoS3Backup/internal/backup"
 	"github.com/hibare/GoS3Backup/internal/config"
 	"github.com/hibare/GoS3Backup/internal/constants"
 	"github.com/hibare/GoS3Backup/internal/logging"
@@ -27,8 +27,8 @@ var rootCmd = &cobra.Command{
 
 		// Schedule backup job
 		if _, err := s.Cron(config.Current.Backup.Cron).Do(func() {
-			backup_int.Backup()
-			backup_int.PurgeOldBackups()
+			intBackup.Backup()
+			intBackup.PurgeOldBackups()
 		}); err != nil {
 			log.Fatalf("Error cron: %v", err)
 		}
@@ -38,7 +38,7 @@ var rootCmd = &cobra.Command{
 		if _, err := s.Cron(constants.VersioCheckCron).Do(func() {
 			version.V.CheckUpdate()
 		}); err != nil {
-			log.Warnf("Failed to scedule version check job: %v", err)
+			log.Warnf("Failed to schedule version check job: %v", err)
 		}
 
 		s.StartBlocking()
