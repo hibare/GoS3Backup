@@ -4,7 +4,7 @@ import (
 	"errors"
 
 	"github.com/hibare/GoS3Backup/internal/config"
-	log "github.com/sirupsen/logrus"
+	"github.com/rs/zerolog/log"
 )
 
 var (
@@ -23,7 +23,7 @@ func runPreChecks() error {
 
 func NotifyBackupSuccess(directory string, totalDirs, totalFiles, successFiles int, key string) {
 	if err := runPreChecks(); err != nil {
-		log.Error(err)
+		log.Error().Err(err)
 		return
 	}
 
@@ -33,7 +33,7 @@ func NotifyBackupSuccess(directory string, totalDirs, totalFiles, successFiles i
 
 func NotifyBackupFailure(directory string, totalDirs, totalFiles int, err error) {
 	if err := runPreChecks(); err != nil {
-		log.Error(err)
+		log.Error().Err(err)
 		return
 	}
 
@@ -43,7 +43,7 @@ func NotifyBackupFailure(directory string, totalDirs, totalFiles int, err error)
 
 func NotifyBackupDeleteFailure(key string, err error) {
 	if err := runPreChecks(); err != nil {
-		log.Error(err)
+		log.Error().Err(err)
 		return
 	}
 

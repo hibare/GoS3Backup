@@ -8,7 +8,7 @@ import (
 	"github.com/hibare/GoS3Backup/internal/config"
 	"github.com/hibare/GoS3Backup/internal/constants"
 	"github.com/hibare/GoS3Backup/internal/version"
-	log "github.com/sirupsen/logrus"
+	"github.com/rs/zerolog/log"
 )
 
 func runDiscordPrechecks() error {
@@ -20,7 +20,7 @@ func runDiscordPrechecks() error {
 
 func discordNotifyBackupSuccess(directory string, totalDirs, totalFiles, successFiles int, key string) {
 	if err := runDiscordPrechecks(); err != nil {
-		log.Error(err)
+		log.Error().Err(err).Msg("error running discord prechecks")
 		return
 	}
 
@@ -56,18 +56,18 @@ func discordNotifyBackupSuccess(directory string, totalDirs, totalFiles, success
 
 	if version.V.NewVersionAvailable {
 		if err := message.AddFooter(version.V.GetUpdateNotification()); err != nil {
-			log.Warn(err)
+			log.Error().Err(err)
 		}
 	}
 
 	if err := message.Send(config.Current.Notifiers.Discord.Webhook); err != nil {
-		log.Error(err)
+		log.Error().Err(err)
 	}
 }
 
 func discordNotifyBackupFailure(directory string, totalDirs, totalFiles int, err error) {
 	if err := runDiscordPrechecks(); err != nil {
-		log.Error(err)
+		log.Error().Err(err)
 		return
 	}
 
@@ -103,18 +103,18 @@ func discordNotifyBackupFailure(directory string, totalDirs, totalFiles int, err
 
 	if version.V.NewVersionAvailable {
 		if err := message.AddFooter(version.V.GetUpdateNotification()); err != nil {
-			log.Warn(err)
+			log.Error().Err(err)
 		}
 	}
 
 	if err := message.Send(config.Current.Notifiers.Discord.Webhook); err != nil {
-		log.Error(err)
+		log.Error().Err(err)
 	}
 }
 
 func discordNotifyBackupDeleteFailure(key string, err error) {
 	if err := runDiscordPrechecks(); err != nil {
-		log.Error(err)
+		log.Error().Err(err)
 		return
 	}
 
@@ -140,11 +140,11 @@ func discordNotifyBackupDeleteFailure(key string, err error) {
 
 	if version.V.NewVersionAvailable {
 		if err := message.AddFooter(version.V.GetUpdateNotification()); err != nil {
-			log.Warn(err)
+			log.Error().Err(err)
 		}
 	}
 
 	if err := message.Send(config.Current.Notifiers.Discord.Webhook); err != nil {
-		log.Error(err)
+		log.Error().Err(err)
 	}
 }
