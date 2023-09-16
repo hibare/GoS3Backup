@@ -1,7 +1,9 @@
 package backup
 
 import (
-	log "github.com/sirupsen/logrus"
+	"errors"
+
+	log "github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 )
 
@@ -10,8 +12,9 @@ var BackupCmd = &cobra.Command{
 	Short: "Perform backups & related operations",
 	Long:  "",
 	Run: func(cmd *cobra.Command, args []string) {
+		log.Error().Err(errors.New("test error")).Msg("Printing help")
 		if err := cmd.Help(); err != nil {
-			log.Fatalf("Error: %v", err)
+			log.Error().Err(err).Msg("error printing help")
 		}
 	},
 }

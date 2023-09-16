@@ -2,9 +2,10 @@ package config
 
 import (
 	commonConfig "github.com/hibare/GoCommon/v2/pkg/config"
+	commonLogger "github.com/hibare/GoCommon/v2/pkg/logger"
 	commonUtils "github.com/hibare/GoCommon/v2/pkg/utils"
 	"github.com/hibare/GoS3Backup/internal/constants"
-	log "github.com/sirupsen/logrus"
+	"github.com/rs/zerolog/log"
 )
 
 type S3Config struct {
@@ -22,7 +23,7 @@ type GPGConfig struct {
 }
 
 type Encryption struct {
-	Enabled bool `yaml:"encrypt" mapstructure:"encrypt"`
+	Enabled bool `yaml:"enabled" mapstructure:"enabled"`
 	GPG     GPGConfig
 }
 
@@ -46,10 +47,16 @@ type NotifiersConfig struct {
 	Discord DiscordNotifierConfig `yaml:"discord" mapstructure:"discord"`
 }
 
+type LoggerConfig struct {
+	Level string `yaml:"level" mapstructure:"level"`
+	Mode  string `yaml:"mode" mapstructure:"mode"`
+}
+
 type Config struct {
 	S3        S3Config        `yaml:"s3" mapstructure:"s3"`
 	Backup    BackupConfig    `yaml:"backup" mapstructure:"backup"`
 	Notifiers NotifiersConfig `yaml:"notifiers" mapstructure:"notifiers"`
+	Logger    LoggerConfig    `yaml:"logger" mapstructure:"logger"`
 }
 
 var Current *Config
@@ -59,25 +66,46 @@ var BC commonConfig.BaseConfig
 func LoadConfig() {
 	current, err := BC.ReadYAMLConfig(Current)
 	if err != nil {
-		log.Fatalf("Error reading config file: %v", err)
+		log.Fatal().Err(err).Msg("Error reading config file")
 	}
 	Current = current.(*Config)
 
+	// Check if logger.level & logger.mode are correct
+	if Current.Logger.Level == "" {
+		Current.Logger.Level = commonLogger.DefaultLoggerLevel
+	} else if Current.Logger.Level != "" {
+		if !commonLogger.IsValidLogLevel(Current.Logger.Level) {
+			log.Fatal().Str("level", Current.Logger.Level).Msg("Error invalid logger level")
+		}
+	}
+
+	if Current.Logger.Mode == "" {
+		Current.Logger.Mode = commonLogger.DefaultLoggerMode
+	} else if Current.Logger.Mode != "" {
+		if !commonLogger.IsValidLogMode(Current.Logger.Mode) {
+			log.Fatal().Str("mode", Current.Logger.Mode).Msg("Error invalid logger mode")
+		}
+	}
+
+	// Set logger level & mode
+	commonLogger.SetLoggingLevel(Current.Logger.Level)
+	commonLogger.SetLoggingMode(Current.Logger.Mode)
+
 	// Set default DateTimeLayout if missing
 	if Current.Backup.DateTimeLayout == "" {
-		log.Warnf("DateTimeLayout is not set, using default: %s", constants.DefaultDateTimeLayout)
+		log.Warn().Msgf("DateTimeLayout is not set, using default: %s", constants.DefaultDateTimeLayout)
 		Current.Backup.DateTimeLayout = constants.DefaultDateTimeLayout
 	}
 
 	// Set RetentionCount if missing
 	if Current.Backup.RetentionCount == 0 {
-		log.Warnf("RetentionCount is not set, using default: %d", constants.DefaultRetentionCount)
+		log.Warn().Msgf("RetentionCount is not set, using default: %d", constants.DefaultRetentionCount)
 		Current.Backup.RetentionCount = constants.DefaultRetentionCount
 	}
 
 	// Set Schedule if missing
 	if Current.Backup.Cron == "" {
-		log.Warnf("Schedule is not set, using default: %s", constants.DefaultCron)
+		log.Warn().Msgf("Schedule is not set, using default: %s", constants.DefaultCron)
 		Current.Backup.Cron = constants.DefaultCron
 	}
 
@@ -88,11 +116,11 @@ func LoadConfig() {
 
 	// Check if encryption is enabled & encryption config is enabled
 	if Current.Backup.Encryption.Enabled && !Current.Backup.ArchiveDirs {
-		log.Warningf("Backup encryption is only available when archive dirs are enabled. Disabling encryption")
+		log.Warn().Msg("Backup encryption is only available when archive dirs are enabled. Disabling encryption")
 		Current.Backup.Encryption.Enabled = false
 	} else if Current.Backup.Encryption.Enabled {
 		if Current.Backup.Encryption.GPG.KeyServer == "" || Current.Backup.Encryption.GPG.KeyID == "" {
-			log.Fatalf("Error backup encryption is enabled but encryption config is not set")
+			log.Fatal().Msg("Error backup encryption is enabled but encryption config is not set")
 		}
 	}
 
