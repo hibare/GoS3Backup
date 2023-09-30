@@ -4,7 +4,7 @@ go 1.20
 
 require (
 	github.com/go-co-op/gocron v1.34.2
-	github.com/hibare/GoCommon/v2 v2.3.0
+	github.com/hibare/GoCommon/v2 v2.4.0
 	github.com/jedib0t/go-pretty/v6 v6.4.7
 	github.com/rs/zerolog v1.31.0
 	github.com/spf13/cobra v1.7.0
@@ -12,7 +12,7 @@ require (
 
 require (
 	github.com/ProtonMail/go-crypto v0.0.0-20230717121422-5aa5874ade95 // indirect
-	github.com/aws/aws-sdk-go v1.45.10 // indirect
+	github.com/aws/aws-sdk-go v1.45.14 // indirect
 	github.com/cloudflare/circl v1.3.3 // indirect
 	github.com/fsnotify/fsnotify v1.6.0 // indirect
 	github.com/google/uuid v1.3.1 // indirect
