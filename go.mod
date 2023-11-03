@@ -3,9 +3,9 @@ module github.com/hibare/GoS3Backup
 go 1.20
 
 require (
-	github.com/go-co-op/gocron v1.35.2
+	github.com/go-co-op/gocron v1.35.3
 	github.com/hibare/GoCommon/v2 v2.4.0
-	github.com/jedib0t/go-pretty/v6 v6.4.8
+	github.com/jedib0t/go-pretty/v6 v6.4.9
 	github.com/rs/zerolog v1.31.0
 	github.com/spf13/cobra v1.7.0
 )
@@ -15,7 +15,7 @@ require (
 	github.com/aws/aws-sdk-go v1.45.14 // indirect
 	github.com/cloudflare/circl v1.3.3 // indirect
 	github.com/fsnotify/fsnotify v1.6.0 // indirect
-	github.com/google/uuid v1.3.1 // indirect
+	github.com/google/uuid v1.4.0 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
