@@ -32,8 +32,8 @@ jobs:
         else
           # Create a PR from "$TARGET_BRANCH" to the default branch
           PR_URL=$(gh pr create --base "$DEFAULT_BRANCH" --head "$TARGET_BRANCH" --title "Auto-generated PR" -t "Auto-generated PR" -b "Auto-generated PR")
+          echo "Created PR: $PR_URL"
         fi
 
-        echo "Created PR: $PR_URL"
       env:
         GH_TOKEN: ${{ github.token }}
