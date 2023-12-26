@@ -10,5 +10,17 @@
   },
   "[yaml]": {
     "editor.defaultFormatter": "esbenp.prettier-vscode"
-  }
+  },
+  "cSpell.words": [
+    "bindir",
+    "goarch",
+    "goarm",
+    "hibare",
+    "incpatch",
+    "ldflags",
+    "nfpms",
+    "preremove",
+    "tolower",
+    "trimsuffix"
+  ]
 }
