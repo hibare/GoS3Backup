@@ -5,7 +5,7 @@ go 1.20
 require (
 	github.com/go-co-op/gocron v1.37.0
 	github.com/hibare/GoCommon/v2 v2.6.0
-	github.com/jedib0t/go-pretty/v6 v6.5.2
+	github.com/jedib0t/go-pretty/v6 v6.5.3
 	github.com/rs/zerolog v1.31.0
 	github.com/spf13/cobra v1.8.0
 )
