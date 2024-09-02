@@ -5,7 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/rs/zerolog/log"
+	"log/slog"
 
 	commonGPG "github.com/hibare/GoCommon/v2/pkg/crypto/gpg"
 	commonDateTimes "github.com/hibare/GoCommon/v2/pkg/datetime"
@@ -33,80 +33,81 @@ func Backup() {
 	s3.SetPrefix(config.Current.S3.Prefix, config.Current.Backup.Hostname, true)
 
 	if err := s3.NewSession(); err != nil {
-		log.Fatal().Err(err).Msg("Error creating session")
+		slog.Error("Error creating session", "error", err)
+		os.Exit(1)
 		return
 	}
 
 	// Loop through individual backup dir & perform backup
 	for _, dir := range config.Current.Backup.Dirs {
-		log.Info().Msgf("Processing path %s", dir)
+		slog.Info("Processing path", "path", dir)
 
 		if config.Current.Backup.ArchiveDirs {
-			log.Info().Msgf("Archiving dir %s", dir)
+			slog.Info("Archiving dir", "dir", dir)
 			archivePath, totalFiles, totalDirs, successFiles, err := commonFiles.ArchiveDir(dir, nil)
 			if err != nil {
-				log.Error().Err(err).Msgf("Archiving failed %s", dir)
+				slog.Error("Error archiving", "error", err)
 				notifiers.NotifyBackupFailure(dir, totalDirs, totalFiles, err)
 				continue
 			}
 
 			if successFiles <= 0 {
-				log.Error().Err(err).Msgf("Uploading failed %s", dir)
+				slog.Error("No processable files", "dir", dir)
 				notifiers.NotifyBackupFailure(dir, totalDirs, totalFiles, ErrNoProcessableFiles)
 				continue
 			}
-			log.Info().Msgf("Archived files %d/%d, archive path %s", successFiles, totalFiles, archivePath)
+			slog.Info("Archived files", "successFiles", successFiles, "totalFiles", totalFiles, "archivePath", archivePath)
 
 			uploadPath := archivePath
 
 			if config.Current.Backup.Encryption.Enabled {
-				log.Info().Msgf("Encrypting archive %s", archivePath)
+				slog.Info("Encrypting archive", "archivePath", archivePath)
 				gpg, err := commonGPG.DownloadGPGPubKey(config.Current.Backup.Encryption.GPG.KeyID, config.Current.Backup.Encryption.GPG.KeyServer)
 				if err != nil {
-					log.Error().Err(err).Msg("Error downloading gpg key")
+					slog.Error("Error downloading gpg key", "error", err)
 					notifiers.NotifyBackupFailure(dir, totalDirs, totalFiles, err)
 					continue
 				}
 
 				encryptedFilePath, err := gpg.EncryptFile(archivePath)
 				if err != nil {
-					log.Error().Err(err).Msg("Error encrypting file")
+					slog.Error("Error encrypting file", "error", err)
 					notifiers.NotifyBackupFailure(dir, totalDirs, totalFiles, err)
 					continue
 				}
 
 				uploadPath = encryptedFilePath
-				log.Info().Msgf("Archive encrypted at %s", encryptedFilePath)
+				slog.Info("Encrypted archive", "uploadPath", uploadPath)
 				os.Remove(archivePath)
 			}
 
-			log.Info().Msgf("Uploading file %s", uploadPath)
+			slog.Info("Uploading file", "uploadPath", uploadPath)
 			key, err := s3.UploadFile(uploadPath)
 			if err != nil {
-				log.Error().Err(err).Msgf("Uploading failed %s", dir)
+				slog.Error("Uploading failed", "error", err)
 				notifiers.NotifyBackupFailure(dir, totalDirs, totalFiles, err)
 				continue
 			}
 
-			log.Info().Msgf("Uploaded files %d/%d at %s", successFiles, totalFiles, key)
+			slog.Info("Uploaded file", "key", key, "successFiles", successFiles, "totalFiles", totalFiles, "uploadPath", uploadPath)
 			notifiers.NotifyBackupSuccess(dir, totalDirs, totalFiles, successFiles, key)
 			os.Remove(uploadPath)
 		} else {
-			log.Info().Msgf("Uploading dir %s", dir)
+			slog.Info("Uploading dir", "dir", dir)
 			key, totalFiles, totalDirs, successFiles := s3.UploadDir(dir, nil)
 
 			if successFiles <= 0 {
-				log.Warn().Msgf("Uploading failed %s", dir)
+				slog.Warn("No processable files", "dir", dir)
 				notifiers.NotifyBackupFailure(dir, totalDirs, totalFiles, ErrNoProcessableFiles)
 				continue
 			}
 
-			log.Warn().Msgf("Uploaded files %d/%d at %s", successFiles, totalFiles, s3.Prefix)
+			slog.Warn("Uploaded files", "successFiles", successFiles, "totalFiles", totalFiles, "dir", dir)
 			notifiers.NotifyBackupSuccess(dir, totalDirs, totalFiles, successFiles, key)
 		}
 
 	}
-	log.Info().Msg("Backup job ran successfully")
+	slog.Info("Backup job ran successfully")
 }
 
 func ListBackups() ([]string, error) {
@@ -123,25 +124,25 @@ func ListBackups() ([]string, error) {
 	s3.SetPrefix(config.Current.S3.Prefix, config.Current.Backup.Hostname, false)
 
 	if err := s3.NewSession(); err != nil {
-		log.Error().Err(err).Msg("Error creating session")
+		slog.Error("Error creating session", "error", err)
 		return keys, err
 	}
 
-	log.Info().Msgf("prefix: %s", s3.Prefix)
+	slog.Info("prefix", "prefix", s3.Prefix)
 
 	// Retrieve objects by prefix
 	keys, err := s3.ListObjectsAtPrefixRoot()
 	if err != nil {
-		log.Error().Err(err).Msg("Error listing objects")
+		slog.Error("Error listing objects", "error", err)
 		return keys, err
 	}
 
 	if len(keys) == 0 {
-		log.Info().Msg("No backups found")
+		slog.Info("No backups found")
 		return keys, nil
 	}
 
-	log.Info().Msgf("Found %d backups", len(keys))
+	slog.Info("Found backups", "keys", len(keys))
 
 	// Remove prefix from key to get datetime string
 	keys = s3.TrimPrefix(keys)
@@ -163,7 +164,7 @@ func PurgeOldBackups() {
 	s3.SetPrefix(config.Current.S3.Prefix, config.Current.Backup.Hostname, false)
 
 	if err := s3.NewSession(); err != nil {
-		log.Error().Err(err).Msg("Error creating session")
+		slog.Error("Error creating session", "error", err)
 	}
 
 	backups, err := ListBackups()
@@ -173,24 +174,24 @@ func PurgeOldBackups() {
 	}
 
 	if len(backups) <= int(config.Current.Backup.RetentionCount) {
-		log.Info().Msg("No backups to delete")
+		slog.Info("No backups to delete")
 		return
 	}
 
 	keysToDelete := backups[config.Current.Backup.RetentionCount:]
-	log.Info().Msgf("Found %d backups to delete (backup rentention %d) [%s]", len(keysToDelete), config.Current.Backup.RetentionCount, keysToDelete)
+	slog.Info("Found backups to delete", "backups", len(keysToDelete), "retention", config.Current.Backup.RetentionCount, "keys", keysToDelete)
 
 	// Delete datetime keys from S3 exceding retention count
 	for _, key := range keysToDelete {
-		log.Info().Msgf("Deleting backup %s", key)
+		slog.Info("Deleting backup", "key", key)
 		key = filepath.Join(s3.Prefix, key)
 
 		if err := s3.DeleteObjects(key, true); err != nil {
-			log.Error().Err(err).Msgf("Error deleting backup %s", key)
+			slog.Error("Error deleting backup", "key", key, "error", err)
 			notifiers.NotifyBackupDeleteFailure(key, err)
 			continue
 		}
 	}
 
-	log.Info().Msg("Deletion completed successfully")
+	slog.Info("Deletion completed successfully")
 }

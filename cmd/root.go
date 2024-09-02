@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"log/slog"
 	"os"
 	"time"
 
@@ -12,7 +13,6 @@ import (
 	"github.com/hibare/GoS3Backup/internal/config"
 	"github.com/hibare/GoS3Backup/internal/constants"
 	"github.com/hibare/GoS3Backup/internal/version"
-	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 )
 
@@ -30,15 +30,15 @@ var rootCmd = &cobra.Command{
 			intBackup.Backup()
 			intBackup.PurgeOldBackups()
 		}); err != nil {
-			log.Error().Err(err).Msg("Error setting up cron")
+			slog.Error("Error setting up cron")
 		}
-		log.Info().Msgf("Scheduled backup job to run every %s", config.Current.Backup.Cron)
+		slog.Info("Scheduled backup job", "cron", config.Current.Backup.Cron)
 
 		// Schedule version check job
-		if _, err := s.Cron(constants.VersioCheckCron).Do(func() {
+		if _, err := s.Cron(constants.VersionCheckCron).Do(func() {
 			version.V.CheckUpdate()
 		}); err != nil {
-			log.Warn().Err(err).Msg("Failed to schedule version check job")
+			slog.Warn("Failed to schedule version check job")
 		}
 
 		s.StartBlocking()
@@ -56,12 +56,12 @@ func init() {
 	rootCmd.AddCommand(configCmd.ConfigCmd)
 	rootCmd.AddCommand(backup.BackupCmd)
 
-	cobra.OnInitialize(commonLogger.InitLogger, config.LoadConfig)
+	cobra.OnInitialize(commonLogger.InitDefaultLogger, config.LoadConfig)
 
 	initialVersionCheck := func() {
 		version.V.CheckUpdate()
 		if version.V.NewVersionAvailable {
-			log.Info().Msg(version.V.GetUpdateNotification())
+			slog.Info(version.V.GetUpdateNotification())
 		}
 	}
 	go initialVersionCheck()

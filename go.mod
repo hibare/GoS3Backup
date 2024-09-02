@@ -6,7 +6,6 @@ require (
 	github.com/go-co-op/gocron v1.37.0
 	github.com/hibare/GoCommon/v2 v2.13.0
 	github.com/jedib0t/go-pretty/v6 v6.5.9
-	github.com/rs/zerolog v1.33.0
 	github.com/spf13/cobra v1.8.1
 )
 
@@ -20,8 +19,6 @@ require (
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/magiconair/properties v1.8.7 // indirect
-	github.com/mattn/go-colorable v0.1.13 // indirect
-	github.com/mattn/go-isatty v0.0.19 // indirect
 	github.com/mattn/go-runewidth v0.0.15 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/pelletier/go-toml/v2 v2.2.2 // indirect
