@@ -1,11 +1,13 @@
 package config
 
 import (
+	"log"
+	"log/slog"
+
 	commonConfig "github.com/hibare/GoCommon/v2/pkg/config"
 	commonLogger "github.com/hibare/GoCommon/v2/pkg/logger"
 	commonUtils "github.com/hibare/GoCommon/v2/pkg/utils"
 	"github.com/hibare/GoS3Backup/internal/constants"
-	"github.com/rs/zerolog/log"
 )
 
 type S3Config struct {
@@ -66,7 +68,7 @@ var BC commonConfig.BaseConfig
 func LoadConfig() {
 	current, err := BC.ReadYAMLConfig(Current)
 	if err != nil {
-		log.Fatal().Err(err).Msg("Error reading config file")
+		log.Fatalf("Error reading config file: %s", err)
 	}
 	Current = current.(*Config)
 
@@ -75,7 +77,7 @@ func LoadConfig() {
 		Current.Logger.Level = commonLogger.DefaultLoggerLevel
 	} else if Current.Logger.Level != "" {
 		if !commonLogger.IsValidLogLevel(Current.Logger.Level) {
-			log.Fatal().Str("level", Current.Logger.Level).Msg("Error invalid logger level")
+			log.Fatalf("Error invalid logger level: %s", Current.Logger.Level)
 		}
 	}
 
@@ -83,29 +85,27 @@ func LoadConfig() {
 		Current.Logger.Mode = commonLogger.DefaultLoggerMode
 	} else if Current.Logger.Mode != "" {
 		if !commonLogger.IsValidLogMode(Current.Logger.Mode) {
-			log.Fatal().Str("mode", Current.Logger.Mode).Msg("Error invalid logger mode")
+			log.Fatalf("Error invalid logger mode: %s", Current.Logger.Mode)
 		}
 	}
 
-	// Set logger level & mode
-	commonLogger.SetLoggingLevel(Current.Logger.Level)
-	commonLogger.SetLoggingMode(Current.Logger.Mode)
+	commonLogger.InitLogger(&Current.Logger.Level, &Current.Logger.Mode)
 
 	// Set default DateTimeLayout if missing
 	if Current.Backup.DateTimeLayout == "" {
-		log.Warn().Msgf("DateTimeLayout is not set, using default: %s", constants.DefaultDateTimeLayout)
+		slog.Warn("DateTimeLayout is not set, using default", "default", constants.DefaultDateTimeLayout)
 		Current.Backup.DateTimeLayout = constants.DefaultDateTimeLayout
 	}
 
 	// Set RetentionCount if missing
 	if Current.Backup.RetentionCount == 0 {
-		log.Warn().Msgf("RetentionCount is not set, using default: %d", constants.DefaultRetentionCount)
+		slog.Warn("RetentionCount is not set, using default", "default", constants.DefaultRetentionCount)
 		Current.Backup.RetentionCount = constants.DefaultRetentionCount
 	}
 
 	// Set Schedule if missing
 	if Current.Backup.Cron == "" {
-		log.Warn().Msgf("Schedule is not set, using default: %s", constants.DefaultCron)
+		slog.Warn("Schedule is not set, using default", "default", constants.DefaultCron)
 		Current.Backup.Cron = constants.DefaultCron
 	}
 
@@ -116,11 +116,12 @@ func LoadConfig() {
 
 	// Check if encryption is enabled & encryption config is enabled
 	if Current.Backup.Encryption.Enabled && !Current.Backup.ArchiveDirs {
-		log.Warn().Msg("Backup encryption is only available when archive dirs are enabled. Disabling encryption")
+		slog.Warn("Backup encryption is only available when archive dirs are enabled. Disabling encryption")
 		Current.Backup.Encryption.Enabled = false
 	} else if Current.Backup.Encryption.Enabled {
 		if Current.Backup.Encryption.GPG.KeyServer == "" || Current.Backup.Encryption.GPG.KeyID == "" {
-			log.Fatal().Msg("Error backup encryption is enabled but encryption config is not set")
+			slog.Error("Encryption is enabled but GPG key server or key ID is missing")
+			Current.Backup.Encryption.Enabled = false
 		}
 	}
 

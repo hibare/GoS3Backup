@@ -2,9 +2,9 @@ package notifiers
 
 import (
 	"errors"
+	"log/slog"
 
 	"github.com/hibare/GoS3Backup/internal/config"
-	"github.com/rs/zerolog/log"
 )
 
 var (
@@ -23,7 +23,7 @@ func runPreChecks() error {
 
 func NotifyBackupSuccess(directory string, totalDirs, totalFiles, successFiles int, key string) {
 	if err := runPreChecks(); err != nil {
-		log.Error().Err(err)
+		slog.Error("error running prechecks", "error", err)
 		return
 	}
 
@@ -33,7 +33,7 @@ func NotifyBackupSuccess(directory string, totalDirs, totalFiles, successFiles i
 
 func NotifyBackupFailure(directory string, totalDirs, totalFiles int, err error) {
 	if err := runPreChecks(); err != nil {
-		log.Error().Err(err)
+		slog.Error("error running prechecks", "error", err)
 		return
 	}
 
@@ -43,7 +43,7 @@ func NotifyBackupFailure(directory string, totalDirs, totalFiles int, err error)
 
 func NotifyBackupDeleteFailure(key string, err error) {
 	if err := runPreChecks(); err != nil {
-		log.Error().Err(err)
+		slog.Error("error running prechecks", "error", err)
 		return
 	}
 
