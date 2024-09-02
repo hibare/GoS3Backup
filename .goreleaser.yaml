@@ -1,3 +1,5 @@
+version: 2
+
 source:
   enabled: true
   name_template: "{{ .ProjectName }}-{{ .Version }}"
@@ -55,9 +57,6 @@ nfpms:
 
 checksum:
   name_template: "checksums.txt"
-
-snapshot:
-  name_template: "{{ incpatch .Version }}-next"
 
 changelog:
   sort: asc
