@@ -4,14 +4,14 @@ go 1.22
 
 require (
 	github.com/go-co-op/gocron v1.37.0
-	github.com/hibare/GoCommon/v2 v2.13.0
+	github.com/hibare/GoCommon/v2 v2.17.0
 	github.com/jedib0t/go-pretty/v6 v6.5.9
 	github.com/spf13/cobra v1.8.1
 )
 
 require (
 	github.com/ProtonMail/go-crypto v1.1.0-alpha.5-proton // indirect
-	github.com/aws/aws-sdk-go v1.55.3 // indirect
+	github.com/aws/aws-sdk-go v1.55.5 // indirect
 	github.com/cloudflare/circl v1.3.7 // indirect
 	github.com/fsnotify/fsnotify v1.7.0 // indirect
 	github.com/google/uuid v1.4.0 // indirect
