@@ -1,6 +1,7 @@
 module github.com/hibare/GoS3Backup
 
-go 1.22
+go 1.24.0
+
 require (
 	github.com/go-co-op/gocron v1.37.0
 	github.com/hibare/GoCommon/v2 v2.21.0
