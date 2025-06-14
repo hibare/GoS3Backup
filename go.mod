@@ -4,14 +4,14 @@ go 1.24.0
 
 require (
 	github.com/go-co-op/gocron v1.37.0
-	github.com/hibare/GoCommon/v2 v2.22.0
+	github.com/hibare/GoCommon/v2 v2.23.0
 	github.com/jedib0t/go-pretty/v6 v6.6.7
 	github.com/spf13/cobra v1.9.1
 )
 
 require (
-	github.com/ProtonMail/go-crypto v1.2.0 // indirect
-	github.com/aws/aws-sdk-go v1.55.6 // indirect
+	github.com/ProtonMail/go-crypto v1.3.0 // indirect
+	github.com/aws/aws-sdk-go v1.55.7 // indirect
 	github.com/cloudflare/circl v1.6.0 // indirect
 	github.com/fsnotify/fsnotify v1.8.0 // indirect
 	github.com/go-viper/mapstructure/v2 v2.2.1 // indirect
